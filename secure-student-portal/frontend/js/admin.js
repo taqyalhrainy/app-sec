@@ -67,7 +67,7 @@ function displayUsers(users) {
       <td>${escapeHtml(user.studentId)}</td>
       <td>${escapeHtml(user.phone)}</td>
       <td>
-        <select id="role-${user.id}" data-user-id="${user.id}" data-user-email="${user.email}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
+        <select id="role-${user.id}" data-user-id="${user.id}" data-user-email="${user.email}" data-current-role="${user.role}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
           <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
           <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
         </select>
@@ -86,15 +86,16 @@ function displayUsers(users) {
     const roleSelect = document.getElementById(`role-${user.id}`);
     if (roleSelect) {
       roleSelect.addEventListener('change', (e) => {
-        const currentRole = e.target.options[e.target.selectedIndex - 1]?.value || e.target.value;
-        if (currentRole === e.target.value) return;
+        const currentRole = e.target.dataset.currentRole;
+        const newRole = e.target.value;
         
-        showRoleConfirmation(user.id, user.email, e.target.value, (confirmed) => {
+        if (currentRole === newRole) return;
+        
+        showRoleConfirmation(user.id, user.email, newRole, (confirmed) => {
           if (confirmed) {
-            changeUserRole(user.id, e.target.value);
+            changeUserRole(user.id, newRole);
           } else {
             e.target.value = currentRole;
-            loadUsers();
           }
         });
       });
@@ -135,6 +136,7 @@ async function changeUserRole(userId, newRole) {
   const userIdStr = String(userId);
   const currentUserIdStr = user && user.id ? String(user.id) : '';
 
+  // Check if trying to demote self
   if (currentUserIdStr && currentUserIdStr === userIdStr && newRole !== 'admin') {
     alert('Cannot demote yourself from admin');
     location.reload();
@@ -153,15 +155,19 @@ async function changeUserRole(userId, newRole) {
       showSuccess('User role updated successfully!');
       setTimeout(() => {
         loadUsers();
-      }, 1000);
+      }, 1500);
     } else {
       showError(data.error || 'Failed to update user role');
-      loadUsers();
+      setTimeout(() => {
+        loadUsers();
+      }, 500);
     }
   } catch (error) {
     console.error('Error updating user role:', error);
     showError('Connection error. Please try again.');
-    loadUsers();
+    setTimeout(() => {
+      loadUsers();
+    }, 500);
   }
 }
 
