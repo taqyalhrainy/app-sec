@@ -96,7 +96,7 @@ function displayUsers(users) {
 async function changeUserRole(userId, newRole) {
   const user = getCurrentUser();
 
-  if (user && user.id && user.id == userId && newRole !== 'admin') {
+  if (user && user.id && user.id === userId && newRole !== 'admin') {
     alert('Cannot demote yourself from admin');
     location.reload();
     return;
@@ -130,7 +130,7 @@ async function changeUserRole(userId, newRole) {
 async function deleteUser(userId) {
   const currentUser = getCurrentUser();
 
-  if (currentUser && currentUser.id && currentUser.id == userId) {
+  if (currentUser && currentUser.id && currentUser.id === userId) {
     alert('Cannot delete your own account');
     return;
   }
@@ -154,10 +154,12 @@ async function deleteUser(userId) {
       }, 1000);
     } else {
       showError(data.error || 'Failed to delete user');
+      loadUsers();
     }
   } catch (error) {
     console.error('Error deleting user:', error);
     showError('Connection error. Please try again.');
+    loadUsers();
   }
 }
 

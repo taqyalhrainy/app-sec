@@ -99,7 +99,7 @@ router.delete('/users/:id', authMiddleware, roleMiddleware('admin'), async (req,
   try {
     const userId = req.params.id;
 
-    if (req.user.id === userId) {
+    if (req.user.id.toString() === userId.toString()) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
