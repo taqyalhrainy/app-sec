@@ -1,88 +1,112 @@
-// Security: Database setup with SQLite
-// This module initializes the database with secure schema including password hashing support
+// Security: Database setup with MongoDB
+// This module connects to MongoDB Atlas and defines secure schemas
 
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const dbPath = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath);
+// User Schema
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  student_id_encrypted: {
+    type: String,
+    required: true
+  },
+  phone_encrypted: {
+    type: String,
+    required: true
+  },
+  password_hash: {
+    type: String,
+    required: true
+  },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
+  created_at: {
+    type: Date,
+    default: Date.now
+  }
+});
 
-// Initialize database tables
-const initializeDatabase = () => {
-  return new Promise((resolve, reject) => {
-    db.serialize(() => {
-      // Users table with encrypted sensitive fields
-      db.run(
-        `CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          student_id_encrypted TEXT NOT NULL,
-          phone_encrypted TEXT NOT NULL,
-          password_hash TEXT NOT NULL,
-          role TEXT DEFAULT 'user',
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`,
-        (err) => {
-          if (err) reject(err);
-        }
-      );
+// Audit Log Schema
+const auditLogSchema = new mongoose.Schema({
+  action: {
+    type: String,
+    required: true
+  },
+  user_email: {
+    type: String
+  },
+  ip_address: {
+    type: String
+  },
+  created_at: {
+    type: Date,
+    default: Date.now
+  }
+});
 
-      // Audit logs table for security tracking
-      db.run(
-        `CREATE TABLE IF NOT EXISTS audit_logs (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          action TEXT NOT NULL,
-          user_email TEXT,
-          ip_address TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`,
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-  });
-};
+const User = mongoose.model('User', userSchema);
+const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
-// Create default admin account if it doesn't exist
-const createDefaultAdmin = async () => {
+// Connect to MongoDB Atlas
+const connectDB = async () => {
   try {
-    const password = 'Admin@12345';
-    // Security: Hash password with bcrypt before storing
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!process.env.MONGODB_URI) {
+      console.error('FATAL: MONGODB_URI is not set in .env file');
+      process.exit(1);
+    }
 
-    db.run(
-      `INSERT OR IGNORE INTO users (name, email, student_id_encrypted, phone_encrypted, password_hash, role)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        'Admin User',
-        'admin@portal.com',
-        'ADMIN_ID_ENCRYPTED',
-        'ADMIN_PHONE_ENCRYPTED',
-        hashedPassword,
-        'admin'
-      ],
-      (err) => {
-        if (err) console.error('Error creating default admin:', err);
-        else console.log('Default admin account created or already exists');
-      }
-    );
+    await mongoose.connect(process.env.MONGODB_URI);
+
+    console.log('MongoDB connected successfully');
+
+    await createDefaultAdmin();
   } catch (error) {
-    console.error('Error hashing admin password:', error);
+    console.error('MongoDB connection error:', error);
+    process.exit(1);
   }
 };
 
-// Execute initialization on startup
-initializeDatabase()
-  .then(() => {
-    console.log('Database initialized successfully');
-    createDefaultAdmin();
-  })
-  .catch((err) => {
-    console.error('Database initialization error:', err);
-  });
+// Create default admin account if it does not exist
+const createDefaultAdmin = async () => {
+  try {
+    const existingAdmin = await User.findOne({ email: 'admin@portal.com' });
 
-module.exports = db;
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash('Admin@12345', 10);
+
+      await User.create({
+        name: 'Admin User',
+        email: 'admin@portal.com',
+        student_id_encrypted: 'ADMIN_ID_ENCRYPTED',
+        phone_encrypted: 'ADMIN_PHONE_ENCRYPTED',
+        password_hash: hashedPassword,
+        role: 'admin'
+      });
+
+      console.log('Default admin account created');
+    } else {
+      console.log('Default admin account already exists');
+    }
+  } catch (error) {
+    console.error('Error creating default admin:', error);
+  }
+};
+
+connectDB();
+
+module.exports = {
+  User,
+  AuditLog
+};
