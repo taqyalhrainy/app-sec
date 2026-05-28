@@ -67,7 +67,7 @@ function displayUsers(users) {
       <td>${escapeHtml(user.studentId)}</td>
       <td>${escapeHtml(user.phone)}</td>
       <td>
-        <select onchange="changeUserRole(${user.id}, this.value)" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
+        <select id="role-${user.id}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
           <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
           <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
         </select>
