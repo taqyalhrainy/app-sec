@@ -153,6 +153,15 @@ async function changeUserRole(userId, newRole) {
 
     if (response.ok) {
       showSuccess('User role updated successfully!');
+      
+      // Update the select element immediately
+      const roleSelect = document.getElementById(`role-${userIdStr}`);
+      if (roleSelect) {
+        roleSelect.value = newRole;
+        roleSelect.dataset.currentRole = newRole;
+      }
+      
+      // Reload after a delay to ensure database is updated
       setTimeout(() => {
         loadUsers();
       }, 1500);

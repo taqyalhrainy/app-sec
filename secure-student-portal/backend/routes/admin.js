@@ -63,6 +63,8 @@ router.put('/users/:id/role', authMiddleware, roleMiddleware('admin'), async (re
     const userId = req.params.id;
     const { role } = req.body;
 
+    console.log(`[ADMIN] Attempting to change role for user ${userId} to ${role}`);
+
     if (!role || !['user', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be "user" or "admin"' });
     }
@@ -72,27 +74,37 @@ router.put('/users/:id/role', authMiddleware, roleMiddleware('admin'), async (re
       return res.status(400).json({ error: 'Cannot demote yourself from admin' });
     }
 
+    // Update the user
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $set: { role: role } },
-      { new: true }
+      { role: role },
+      { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
+      console.log(`[ADMIN] User not found: ${userId}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log(`Role updated for user ${updatedUser.email}: ${role}`);
+    console.log(`[ADMIN] Role updated for ${updatedUser.email}: ${updatedUser.role}`);
 
+    // Log the audit
     await AuditLog.create({
-      action: `change_role_for_${updatedUser.email}`,
+      action: `change_role_to_${role}_for_${updatedUser.email}`,
       user_email: req.user.email,
       ip_address: req.ip
     });
 
-    res.json({ message: 'User role updated successfully', role: updatedUser.role });
+    res.json({ 
+      message: 'User role updated successfully',
+      user: {
+        id: updatedUser._id,
+        email: updatedUser.email,
+        role: updatedUser.role
+      }
+    });
   } catch (error) {
-    console.error('Error updating user role:', error);
+    console.error('[ADMIN] Error updating user role:', error);
     res.status(500).json({ error: 'Failed to update user role' });
   }
 });
