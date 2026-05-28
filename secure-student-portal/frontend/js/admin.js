@@ -67,7 +67,7 @@ function displayUsers(users) {
       <td>${escapeHtml(user.studentId)}</td>
       <td>${escapeHtml(user.phone)}</td>
       <td>
-        <select id="role-${user.id}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
+        <select id="role-${user.id}" data-user-id="${user.id}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
           <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
           <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
         </select>
@@ -80,6 +80,16 @@ function displayUsers(users) {
   `
     )
     .join('');
+
+  // Add event listeners for role changes
+  users.forEach((user) => {
+    const roleSelect = document.getElementById(`role-${user.id}`);
+    if (roleSelect) {
+      roleSelect.addEventListener('change', (e) => {
+        changeUserRole(user.id, e.target.value);
+      });
+    }
+  });
 }
 
 // Change user role

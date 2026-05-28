@@ -35,7 +35,7 @@ router.get('/users', authMiddleware, roleMiddleware('admin'), async (req, res) =
     const users = await User.find().sort({ created_at: -1 });
 
     const decryptedUsers = users.map((user) => ({
-      id: user._id,
+      id: user._id.toString(),
       name: user.name,
       email: user.email,
       studentId: decryptField(user.student_id_encrypted),
@@ -67,13 +67,13 @@ router.put('/users/:id/role', authMiddleware, roleMiddleware('admin'), async (re
       return res.status(400).json({ error: 'Invalid role. Must be "user" or "admin"' });
     }
 
-    if (req.user.id == userId && role !== 'admin') {
+    if (req.user.id === userId && role !== 'admin') {
       return res.status(400).json({ error: 'Cannot demote yourself from admin' });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { role },
+      { role: role },
       { new: true }
     );
 
@@ -99,7 +99,7 @@ router.delete('/users/:id', authMiddleware, roleMiddleware('admin'), async (req,
   try {
     const userId = req.params.id;
 
-    if (req.user.id == userId) {
+    if (req.user.id === userId) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
