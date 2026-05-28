@@ -67,14 +67,14 @@ function displayUsers(users) {
       <td>${escapeHtml(user.studentId)}</td>
       <td>${escapeHtml(user.phone)}</td>
       <td>
-        <select id="role-${user.id}" data-user-id="${user.id}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
+        <select id="role-${user.id}" data-user-id="${user.id}" data-user-email="${user.email}" style="padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px;">
           <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
           <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
         </select>
       </td>
       <td>${formatDate(user.createdAt)}</td>
       <td>
-        <button onclick="deleteUser(${user.id})" class="btn danger" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Delete</button>
+        <button class="btn danger delete-btn" data-user-id="${user.id}" data-user-email="${user.email}" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Delete</button>
       </td>
     </tr>
   `
@@ -86,24 +86,63 @@ function displayUsers(users) {
     const roleSelect = document.getElementById(`role-${user.id}`);
     if (roleSelect) {
       roleSelect.addEventListener('change', (e) => {
-        changeUserRole(user.id, e.target.value);
+        const currentRole = e.target.options[e.target.selectedIndex - 1]?.value || e.target.value;
+        if (currentRole === e.target.value) return;
+        
+        showRoleConfirmation(user.id, user.email, e.target.value, (confirmed) => {
+          if (confirmed) {
+            changeUserRole(user.id, e.target.value);
+          } else {
+            e.target.value = currentRole;
+            loadUsers();
+          }
+        });
       });
     }
   });
+
+  // Add event listeners for delete buttons
+  document.querySelectorAll('.delete-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const userId = e.target.dataset.userId;
+      const userEmail = e.target.dataset.userEmail;
+      showDeleteConfirmation(userId, userEmail);
+    });
+  });
+}
+
+// Show role change confirmation dialog
+function showRoleConfirmation(userId, userEmail, newRole, callback) {
+  const message = `Change role for ${userEmail} to ${newRole}?`;
+  if (confirm(message)) {
+    callback(true);
+  } else {
+    callback(false);
+  }
+}
+
+// Show delete confirmation dialog
+function showDeleteConfirmation(userId, userEmail) {
+  const message = `Are you sure you want to delete ${userEmail}?\n\nThis action cannot be undone.`;
+  if (confirm(message)) {
+    deleteUser(userId);
+  }
 }
 
 // Change user role
 async function changeUserRole(userId, newRole) {
   const user = getCurrentUser();
+  const userIdStr = String(userId);
+  const currentUserIdStr = user && user.id ? String(user.id) : '';
 
-  if (user && user.id && user.id === userId && newRole !== 'admin') {
+  if (currentUserIdStr && currentUserIdStr === userIdStr && newRole !== 'admin') {
     alert('Cannot demote yourself from admin');
     location.reload();
     return;
   }
 
   try {
-    const response = await apiCall(`/api/admin/users/${userId}/role`, {
+    const response = await apiCall(`/api/admin/users/${userIdStr}/role`, {
       method: 'PUT',
       body: JSON.stringify({ role: newRole })
     });
@@ -129,19 +168,16 @@ async function changeUserRole(userId, newRole) {
 // Delete user
 async function deleteUser(userId) {
   const currentUser = getCurrentUser();
+  const userIdStr = String(userId);
+  const currentUserIdStr = currentUser && currentUser.id ? String(currentUser.id) : '';
 
-  if (currentUser && currentUser.id && currentUser.id === userId) {
+  if (currentUserIdStr && currentUserIdStr === userIdStr) {
     alert('Cannot delete your own account');
     return;
   }
 
-  // Security: Confirm action before deletion
-  if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-    return;
-  }
-
   try {
-    const response = await apiCall(`/api/admin/users/${userId}`, {
+    const response = await apiCall(`/api/admin/users/${userIdStr}`, {
       method: 'DELETE'
     });
 

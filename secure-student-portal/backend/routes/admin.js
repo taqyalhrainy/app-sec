@@ -60,14 +60,14 @@ router.get('/users', authMiddleware, roleMiddleware('admin'), async (req, res) =
 // Change user role - Admin only
 router.put('/users/:id/role', authMiddleware, roleMiddleware('admin'), async (req, res) => {
   try {
-    const userId = req.params.id;
+    const userId = String(req.params.id).trim();
     const { role } = req.body;
 
     if (!role || !['user', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be "user" or "admin"' });
     }
 
-    if (req.user.id === userId && role !== 'admin') {
+    if (String(req.user.id) === userId && role !== 'admin') {
       return res.status(400).json({ error: 'Cannot demote yourself from admin' });
     }
 
@@ -97,9 +97,9 @@ router.put('/users/:id/role', authMiddleware, roleMiddleware('admin'), async (re
 // Delete user - Admin only
 router.delete('/users/:id', authMiddleware, roleMiddleware('admin'), async (req, res) => {
   try {
-    const userId = req.params.id;
+    const userId = String(req.params.id).trim();
 
-    if (req.user.id.toString() === userId.toString()) {
+    if (String(req.user.id) === userId) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
