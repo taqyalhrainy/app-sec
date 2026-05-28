@@ -2,23 +2,34 @@
 // Verifies JWT tokens and protects private routes
 
 const jwt = require('jsonwebtoken');
+const { User } = require('../database');
 
-const authMiddleware = (req, res, next) => {
-  // Security: Extract token from Authorization header or localStorage (passed as header)
+const authMiddleware = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1] || req.query.token;
 
   if (!token) {
-    // Security: Don't expose sensitive information in error message
     return res.status(401).json({ error: 'Unauthorized: No token provided' });
   }
 
   try {
-    // Security: Verify token signature and expiration
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Attach user info to request
+
+    // Get the latest user data from MongoDB
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    req.user = {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role
+    };
+
     next();
   } catch (error) {
-    // Security: Generic error message to avoid information disclosure
+    console.error('Auth middleware error:', error);
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
